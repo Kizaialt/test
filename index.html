@@ -1,49 +1,744 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="mn">
 <head>
-  <title>WePro Properties</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="YOUR_GOOGLE_MAPS_API_LINK_HERE"></script>
-  <style>
-    body { margin:0; font-family: Arial; }
-    #map { height:100vh; width:100%; }
-    .contact-box {
-      position:absolute;
-      bottom:20px;
-      left:20px;
-      background:white;
-      padding:12px;
-      border-radius:8px;
-      box-shadow:0 2px 10px rgba(0,0,0,0.2);
-    }
-  </style>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>PROPERTY_INVENTORY</title>
+
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"/>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.css"/>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+<style>
+:root{
+  --bg:#fff;
+  --text:#111827;
+  --muted:#6b7280;
+  --border:#e5e7eb;
+  --shadow:0 10px 25px rgba(0,0,0,.12);
+}
+
+html, body{
+  margin:0; height:100%;
+  font-family: "Noto Sans", "Segoe UI", Arial, sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  color:var(--text);
+}
+input, select, button, option, textarea{
+  font-family: "Noto Sans", "Segoe UI", Arial, sans-serif !important;
+}
+*{ font-synthesis: none; }
+
+#map{height:100vh;width:100vw}
+
+/* Map style toggle */
+.mapToggle{
+  position:fixed;
+  left:14px;
+  top:140px;
+  width:44px;
+  height:44px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:#fff;
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  z-index:12000;
+  font-weight:950;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:0;
+}
+@media (max-width: 900px){
+  .mapToggle{
+    left:auto;
+    top:12px;
+    right:12px;
+    width:38px;
+    height:38px;
+    border-radius:12px;
+  }
+}
+
+/* Panel */
+.panel{
+  position:fixed; right:16px; top:110px; width:380px;
+  background:#fff; border:1px solid var(--border);
+  border-radius:14px; box-shadow:var(--shadow); z-index:9999;
+  overflow:hidden;
+}
+.panelHeader{
+  padding:12px; font-weight:950; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+.panelBody{padding:12px}
+.hidden{display:none !important}
+
+.input,.select{
+  width:100%;
+  padding:12px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  font-weight:900;
+  font-size:14px;
+  background:#fff;
+  outline:none;
+  margin-bottom:12px;
+}
+.btn{
+  padding:8px 10px;
+  border-radius:12px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-weight:950;
+  cursor:pointer;
+}
+
+.topRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:12px;
+  margin-bottom:12px;
+}
+.topRow .select,
+.topRow .input{ margin-bottom:0; }
+
+.rowInline{ display:flex; gap:10px; align-items:center; margin-top:2px; }
+.switchWrap{
+  display:flex; gap:10px; align-items:center;
+  font-weight:900; color:var(--text);
+  user-select:none;
+}
+.switchWrap input{ transform: scale(1.1); }
+
+/* Slider wrap */
+.sliderWrap{
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:12px;
+  background:#fff;
+  margin-bottom:12px;
+}
+.sliderLabel{ margin-top:10px; font-size:13px; color:var(--muted); font-weight:900; }
+
+/* noUiSlider */
+.noUi-target{ border:none; box-shadow:none; background:#e5e7eb; border-radius:999px; height:10px; }
+.noUi-connect{ background:#111827; }
+.noUi-handle{
+  width:22px !important; height:22px !important;
+  right:-11px !important; top:-6px !important;
+  border-radius:999px !important;
+  border:2px solid #111827 !important;
+  background:#fff !important;
+  box-shadow:none !important;
+}
+.noUi-handle:before, .noUi-handle:after{ display:none; }
+
+/* Mapon-style marker */
+.maponMarker{ display:flex; align-items:center; gap:8px; white-space:nowrap; pointer-events:auto; }
+.maponPin{ width:22px; height:22px; filter: drop-shadow(0 2px 6px rgba(0,0,0,.25)); flex:0 0 auto; }
+.maponText, .maponSub{
+  font-weight:950; font-size:12px; line-height:1.15; color:#111;
+  text-shadow: 0 1px 0 rgba(255,255,255,.95), 0 0 6px rgba(255,255,255,.75);
+}
+.maponSub{ margin-top:2px; }
+
+/* Popup */
+.popupTop{font-weight:950;font-size:14px}
+.popupChips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.chip{ padding:7px 10px; border-radius:12px; font-size:12px; font-weight:950; border:1px solid var(--border); }
+.chip.red{background:#fee2e2;border-color:#fecaca}
+.chip.green{background:#dcfce7;border-color:#bbf7d0}
+.chip.blue{background:#dbeafe;border-color:#bfdbfe}
+.chip.gray{background:#f3f4f6;border-color:#e5e7eb}
+.popupHint{font-size:12px;color:var(--muted);margin-top:10px}
+
+/* Drawer */
+.drawer{
+  position:fixed; right:16px; top:110px; bottom:16px; width:440px;
+  background:#fff; border:1px solid var(--border); border-radius:14px;
+  box-shadow:var(--shadow); display:none; z-index:10000; overflow:hidden;
+  max-height:calc(100dvh - 110px - 16px);
+}
+.drawerHeader{
+  padding:14px; border-bottom:1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.drawerTitle{ width:100%; text-align:center; font-weight:950; font-size:16px; }
+.drawerClose{
+  border:none; background:transparent;
+  font-size:18px; cursor:pointer;
+  padding:6px 10px; border-radius:10px;
+}
+.drawerClose:hover{ background:#f3f4f6; }
+
+.drawerBody{
+  padding:14px; padding-bottom:60px;
+  overflow-y:auto;
+  height:calc(100dvh - 110px - 16px - 60px);
+  box-sizing:border-box;
+}
+.drawerBody > .rowBox:last-child{ margin-bottom:24px; }
+
+.section{ font-weight:950; margin:18px 0 10px; }
+.sectionCenter{ text-align:center; }
+
+.stats{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
+.stat{ border:1px solid var(--border); border-radius:12px; padding:10px; }
+.statLabel{ font-size:11px; color:var(--muted); font-weight:900; }
+.statValue{ font-size:13px; font-weight:950; margin-top:6px; }
+
+.rowBox{
+  display:flex; justify-content:space-between; align-items:center; gap:10px;
+  border:1px solid var(--border); border-radius:12px;
+  padding:10px; margin-top:10px; font-weight:950;
+}
+.rowBox span{ white-space:nowrap; }
+.rowBox span:first-child{ white-space:normal; }
+.rowBox span:nth-child(2){ color:var(--muted); font-weight:900; }
+.rowBox span:last-child{ margin-left:auto; }
+
+.valueNormal{ font-weight:600; color:var(--text); }
+a.cleanLink{ text-decoration:none; font-weight:950; color:var(--text); }
+
+.checks{ display:flex; gap:18px; margin-top:10px; }
+.box{
+  width:16px; height:16px;
+  border:1px solid #cbd5e1; border-radius:4px;
+  display:inline-flex; align-items:center; justify-content:center;
+}
+.checked{ background:#111827; color:#fff; border-color:#111827; font-size:12px; }
+
+.linkBtns{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  margin-top:12px;
+}
+.linkBtn{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:14px 12px;
+  border-radius:14px;
+  border:1px solid var(--border);
+  background:#fff;
+  font-weight:950;
+  text-decoration:none;
+  color:var(--text);
+}
+.linkBtn:hover{ background:#f9fafb; }
+.linkBtn:active{ transform: translateY(1px); }
+.linkBtn.disabled{ opacity:.45; pointer-events:none; }
+
+@media (max-width: 900px){
+  .panel{width:92vw; right:4vw; top:90px;}
+  .drawer{width:92vw; right:4vw; top:90px;}
+  .stats{grid-template-columns:repeat(2,1fr)}
+}
+</style>
 </head>
+
 <body>
-
 <div id="map"></div>
+<button class="mapToggle" id="mapToggle" aria-label="Toggle map style">🛰</button>
 
-<div class="contact-box">
-  <strong>Kizai</strong><br>
-  📞 80816404<br>
-  📧 youremail@gmail.com
+<div class="panel">
+  <div class="panelHeader">
+    <div>WePro Үл хөдлөх сан | А.Оргил</div>
+    <button class="btn" id="collapseBtn">☰</button>
+  </div>
+
+  <div class="panelBody" id="panelBody">
+
+      <select class="select" id="uh">
+        <option value="">ҮХ Төрөл (Бүгд)</option>
+      </select>
+    </div>
+
+    <input class="input" id="nershilSearch" placeholder="Нэршилээр хайх (agartha, central tower г.м)"/>
+
+    <div class="topRow">
+      <select class="select" id="type">
+        <option value="">Борлуулах болон Түрээслэх</option>
+        <option value="борлуулах">зөвхөн Борлуулах</option>
+        <option value="түрээслэх">зөвхөн Түрээс</option>
+      </select>
+
+      <select class="select" id="district">
+        <option value="">Дүүрэг (Бүгд)</option>
+      </select>
+    </div>
+
+    <select class="select" id="pay">
+      <option value="">Төлбөрийн нөхцөл (Бүгд)</option>
+    </select>
+
+    <div style="font-weight:900; margin:6px 0 6px;">Үнэ (₮)</div>
+    <div class="sliderWrap">
+      <div id="priceSlider"></div>
+      <div class="sliderLabel" id="priceLabel"></div>
+    </div>
+
+    <div style="font-weight:900; margin:14px 0 6px;">Талбай (m²)</div>
+    <div class="sliderWrap">
+      <div id="m2Slider"></div>
+      <div class="sliderLabel" id="m2Label"></div>
+    </div>
+
+    <div class="rowInline">
+      <label class="switchWrap">
+        <input type="checkbox" id="clusterToggle">
+        Багцлах
+      </label>
+      <div style="color:var(--muted);font-weight:900;font-size:12px;">
+        (Томруулахад гарч ирэх болно)
+      </div>
+    </div>
+  </div>
 </div>
 
-<script>
-function initMap() {
-  const map = new google.maps.Map(document.getElementById("map"), {
-    zoom: 13,
-    center: { lat: 47.8864, lng: 106.9057 }
-  });
+<div class="drawer" id="drawer">
+  <div class="drawerHeader">
+    <div class="drawerTitle" id="drawerTitle"></div>
+    <button class="drawerClose" id="drawerClose" title="Close">✕</button>
+  </div>
+  <div class="drawerBody" id="drawerBody"></div>
+</div>
 
-  new google.maps.Marker({
-    position: { lat: 47.8864, lng: 106.9057 },
-    map: map,
-    title: "Property"
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/nouislider@15.7.1/dist/nouislider.min.js"></script>
+
+<script>
+/* ========= CONFIG ========= */
+const API_URL = "https://script.googleusercontent.com/macros/echo?user_content_key=AehSKLigFetVxIZTHz4KamKi9nBjZqypxx-GDJpr9OmBve0P5iXEwZqM6_3BzyLd8d_CIwfSO1aQ2zHYJHUybkuvoKLpG1-iGkIOSTwL-3mooYJdw21CLcOiphR_M8v0j5MNLAGbsUoiRrNdLS606OpESLvybSVw_Q9uiBJhkayZPzu3EbRkf3p-M23A1czZBl4EWXB93wKsEtTvtQbzpM6uDk3c7ufUt-6k_cTc-MAyOauck02ByAfCLSXnfx5-20TzYyLsxSVmr0MhJvGlb4JxIAHpLjuaxA&lib=MWmJCaLoe2GY5RYMSwbuSdreUnuxCpyAE";
+
+/* ========= MAP ========= */
+const map = L.map("map").setView([47.918,106.917], 11);
+const clean = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+const sat = L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", { maxZoom: 19 });
+
+let satOn = false;
+const mapToggle = document.getElementById("mapToggle");
+mapToggle.onclick = () => {
+  satOn = !satOn;
+  if (satOn){ map.removeLayer(clean); map.addLayer(sat); mapToggle.textContent = "🗺"; }
+  else { map.removeLayer(sat); map.addLayer(clean); mapToggle.textContent = "🛰"; }
+};
+
+/* ========= UI ========= */
+document.getElementById("collapseBtn").onclick = () =>
+  document.getElementById("panelBody").classList.toggle("hidden");
+
+const nershilSearch = document.getElementById("nershilSearch");
+const typeEl = document.getElementById("type");
+const districtEl = document.getElementById("district");
+const payEl = document.getElementById("pay");
+const clusterToggle = document.getElementById("clusterToggle");
+const uhEl = document.getElementById("uh");
+
+const priceSliderEl = document.getElementById("priceSlider");
+const priceLabel = document.getElementById("priceLabel");
+const m2SliderEl = document.getElementById("m2Slider");
+const m2Label = document.getElementById("m2Label");
+
+const drawer = document.getElementById("drawer");
+const drawerTitle = document.getElementById("drawerTitle");
+const drawerBody = document.getElementById("drawerBody");
+document.getElementById("drawerClose").onclick = () => drawer.style.display = "none";
+
+/* ========= HELPERS ========= */
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({
+  "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+}[c]));
+const norm = v => String(v ?? "").trim().toLowerCase();
+
+function toNumber(v){
+  const s = String(v ?? "").trim().replace(",", ".");
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+function money(v){
+  if (v === null || v === undefined || v === "") return "-";
+  const n = toNumber(v);
+  if (!Number.isFinite(n)) return esc(String(v));
+  return n.toLocaleString() + " ₮";
+}
+function valueOrDash(v){
+  const s = String(v ?? "").trim();
+  return s ? esc(s) : "-";
+}
+function normText(s){
+  return String(s ?? "").toLowerCase().replace(/\s+/g," ").trim();
+}
+function fuzzyIncludes(haystack, query){
+  const h = normText(haystack);
+  const q = normText(query);
+  if (!q) return true;
+  const tokens = q.split(" ").filter(Boolean);
+  return tokens.every(t => h.includes(t));
+}
+function fmtMoneyShort(n){
+  if (!Number.isFinite(n)) return "-";
+  const million = Math.round(n / 1_000_000);
+  return `${million} сая ₮`;
+}
+function torolPinColor(torol){
+  const t = norm(torol);
+  if (t === "борлуулах") return "#ef4444";
+  if (t === "түрээслэх" || t === "түрээс") return "#22c55e";
+  return "#3b82f6";
+}
+function chipClassForTorol(torol){
+  const t = norm(torol);
+  if (t === "борлуулах") return "red";
+  if (t === "түрээслэх" || t === "түрээс") return "green";
+  return "blue";
+}
+function torolLabel(torol){
+  const t = norm(torol);
+  if (t === "түрээслэх") return "түрээс";
+  return t;
+}
+
+/* ========= LAYERS ========= */
+const pinsLayer = L.layerGroup().addTo(map);
+const clusterLayer = L.markerClusterGroup({
+  chunkedLoading: true,
+  showCoverageOnHover: false,
+  spiderfyOnMaxZoom: true,
+  maxClusterRadius: 50,
+  disableClusteringAtZoom: 15
+});
+let useCluster = false;
+function setLayerMode(clusterOn){
+  useCluster = !!clusterOn;
+  if (useCluster){ map.removeLayer(pinsLayer); map.addLayer(clusterLayer); }
+  else { map.removeLayer(clusterLayer); map.addLayer(pinsLayer); }
+}
+clusterToggle.onchange = () => { setLayerMode(clusterToggle.checked); render(); };
+
+/* ========= SLIDER STATE ========= */
+let priceRange = { min: -Infinity, max: Infinity };
+let m2Range = { min: -Infinity, max: Infinity };
+const PRICE_CAP = 2000 * 1_000_000;
+const PRICE_STEP = 50_000_000;
+const AREA_CAP = 300;
+const AREA_STEP = 10;
+
+/* ========= MARKERS ========= */
+function makeMarker(item){
+  const title = esc(item.nershil || "");
+  const uh = String(item.uhTorol ?? "").trim();
+  const m2 = item.m2 ? `${esc(item.m2)}м²` : "";
+  const uruu = (item.uruu !== null && item.uruu !== undefined && String(item.uruu).trim() !== "")
+    ? `${esc(item.uruu)} өрөө` : "";
+  const info = [m2, uruu].filter(Boolean).join(" | ");
+  const sub = [uh, info].filter(Boolean).join(" • ");
+
+  const pinColor = torolPinColor(item.torol);
+  const pinSvg = `
+    <svg class="maponPin" viewBox="0 0 24 24" aria-hidden="true">
+      <path fill="${pinColor}" d="M12 2c-3.314 0-6 2.686-6 6 0 4.5 6 14 6 14s6-9.5 6-14c0-3.314-2.686-6-6-6z"/>
+      <circle cx="12" cy="8" r="2.6" fill="#ffffff"/>
+    </svg>
+  `;
+  const html = `
+    <div class="maponMarker">
+      ${pinSvg}
+      <div>
+        <div class="maponText">${title}</div>
+        <div class="maponSub">${esc(sub)}</div>
+      </div>
+    </div>
+  `;
+  return L.marker([item.lat, item.lng], {
+    icon: L.divIcon({ className:"", html, iconAnchor:[11,22], popupAnchor:[0,-18] })
   });
 }
 
-window.initMap = initMap;
-</script>
+/* ========= POPUP ========= */
+function popupHTML(i){
+  const m2 = i.m2 ? `${i.m2}м²` : "";
+  const uruu = (i.uruu !== null && i.uruu !== undefined && String(i.uruu).trim() !== "")
+    ? `${i.uruu} өрөө` : "";
+  const mainInfo = [m2, uruu].filter(Boolean).join(" | ");
+  const chip = (text, cls) => {
+    const t = String(text ?? "").trim();
+    return t ? `<span class="chip ${cls}">${esc(t)}</span>` : "";
+  };
+  return `
+    <div>
+      <div class="popupTop">${esc(i.nershil || "")}</div>
+      <div class="popupChips">
+        ${chip(torolLabel(i.torol), chipClassForTorol(i.torol))}
+        ${chip(mainInfo, "gray")}
+      </div>
+      <div class="popupHint">Click to open details →</div>
+    </div>
+  `;
+}
 
+/* ========= DRAWER (✅ has Google directions button) ========= */
+function openDrawer(i){
+  drawer.style.display = "block";
+  drawerTitle.textContent = i.nershil || "-";
+
+  const gmapsUrl = (Number.isFinite(i.lat) && Number.isFinite(i.lng))
+    ? `https://www.google.com/maps/dir/?api=1&destination=${i.lat},${i.lng}`
+    : "";
+
+  const matterportUrl = String(i.matterport || "").trim();
+  const listUrl = String(i.listLink || "").trim();
+
+  const garageBox = `<span class="box ${i.garaj ? "checked" : ""}">${i.garaj ? "✓" : ""}</span>`;
+  const liftBox   = `<span class="box ${i.lift ? "checked" : ""}">${i.lift ? "✓" : ""}</span>`;
+
+  const showRent = (String(i.tureesUne ?? "").trim() !== "" || String(i.tureesNohtsol ?? "").trim() !== "");
+  const showBarter = (String(i.barterNohtsol ?? "").trim() !== "");
+
+  drawerBody.innerHTML = `
+    <div class="section">Үндсэн мэдээлэл</div>
+    <div class="stats">
+      <div class="stat"><div class="statLabel">Газар M²</div><div class="statValue">${valueOrDash(i.gazarM2)}</div></div>
+      <div class="stat"><div class="statLabel">M²</div><div class="statValue">${valueOrDash(i.m2)}</div></div>
+      <div class="stat"><div class="statLabel">Үнэ</div><div class="statValue">${money(i.une)}</div></div>
+      <div class="stat"><div class="statLabel">M² үнэлгээ</div><div class="statValue">${valueOrDash(i.m2Uneleg)}</div></div>
+    </div>
+
+    ${gmapsUrl ? `
+      <div class="rowBox">
+        <span>Google Maps</span>
+        <a class="cleanLink" href="${gmapsUrl}" target="_blank" rel="noopener">Чиглэл авах →</a>
+      </div>
+    ` : ""}
+
+    <div class="rowBox"><span>Өрөө</span><span>${valueOrDash(i.uruu)}</span></div>
+    <div class="rowBox"><span>Давхар / Байр Давхар</span><span>${valueOrDash(i.davhar)} / ${valueOrDash(i.bairDavhar)}</span></div>
+
+    ${showRent ? `
+      <div class="section">Түрээс</div>
+      <div class="rowBox">
+        <span>Түрээс үнэ</span>
+        <span>${valueOrDash(i.tureesNohtsol)}</span>
+        <span>${money(i.tureesUne)}</span>
+      </div>
+    ` : ""}
+
+    <div class="rowBox">
+      <span>Төлбөрийн нөхцөл</span>
+      <span>${valueOrDash(i.tolborNohtsol)}</span>
+    </div>
+
+    ${showBarter ? `
+      <div class="section">Barter нөхцөл</div>
+      <div class="valueNormal" style="white-space:pre-line;">${esc(String(i.barterNohtsol))}</div>
+    ` : ""}
+
+    <div class="section">Онцлог</div>
+    <div class="checks">
+      <div>${garageBox} Гараж</div>
+      <div>${liftBox} Лифт</div>
+    </div>
+
+    <div class="section">Цонхны чиглэл</div>
+    <div class="valueNormal">${valueOrDash(i.tsonhniiChiglel)}</div>
+
+<div style="margin-top:24px; text-align:center;">
+  <img src="qr.png" style="width:160px; border-radius:12px; border:1px solid #e5e7eb;">
+</div>
+
+
+/* ========= DATA + FILTERS ========= */
+let ALL = [];
+
+function matchesFilters(item){
+  const uhSel = String(uhEl.value || "").trim();
+  const torol = norm(typeEl.value);
+  const district = norm(districtEl.value);
+  const pay = norm(payEl.value);
+
+  if (district && norm(item.bairshil) !== district) return false;
+
+  if (nershilSearch.value && !fuzzyIncludes(item.nershil, nershilSearch.value)) return false;
+
+  if (uhSel) {
+    const itUH = norm(item.uhTorol);
+    if (uhSel === "cat_gazar") {
+      if (itUH !== "газар") return false;
+    } else if (uhSel === "cat_gazar_object") {
+      const allowed = new Set(["газар","газартай обьект","газартай объект","зуслан","обьект","объект","хашаа байшин"]);
+      if (!allowed.has(itUH)) return false;
+    } else if (uhSel === "cat_zuslan") {
+      if (itUH !== "зуслан") return false;
+    } else if (uhSel === "cat_object") {
+      if (!(itUH === "обьект" || itUH === "объект")) return false;
+    } else {
+      if (itUH !== norm(uhSel)) return false;
+    }
+  }
+
+  const itTorol = norm(item.torol);
+  if (torol) {
+    if (torol === "борлуулах") {
+      if (!(itTorol === "борлуулах" || itTorol === "хоёулаа")) return false;
+    } else if (torol === "түрээслэх" || torol === "түрээс") {
+      if (!(itTorol === "түрээслэх" || itTorol === "түрээс" || itTorol === "хоёулаа")) return false;
+    } else {
+      if (itTorol !== torol) return false;
+    }
+  }
+
+  const itPay = norm(item.tolborNohtsol);
+  if (pay) {
+    if (pay === "бэлэн мөнгө") {
+      if (!itPay.includes("бэлэн мөнгө")) return false;
+    } else {
+      if (itPay !== pay) return false;
+    }
+  }
+
+  const p = toNumber(item.une);
+  if (Number.isFinite(p)) {
+    if (priceRange.max >= PRICE_CAP) { if (p < priceRange.min) return false; }
+    else { if (p < priceRange.min || p > priceRange.max) return false; }
+  }
+
+  const a = toNumber(item.m2);
+  if (Number.isFinite(a)) {
+    if (m2Range.max >= AREA_CAP) { if (a < m2Range.min) return false; }
+    else { if (a < m2Range.min || a > m2Range.max) return false; }
+  }
+
+  return true;
+}
+
+function activeLayer(){ return useCluster ? clusterLayer : pinsLayer; }
+function clearActiveLayer(){ useCluster ? clusterLayer.clearLayers() : pinsLayer.clearLayers(); }
+
+function render(){
+  clearActiveLayer();
+  const layer = activeLayer();
+  const filtered = ALL.filter(matchesFilters);
+
+  for (const i of filtered){
+    const m = makeMarker(i);
+    m.bindPopup(popupHTML(i), { closeButton:true });
+    m.on("popupopen", (e) => {
+      const el = e.popup.getElement();
+      if (!el) return;
+      el.style.cursor = "pointer";
+      el.onclick = () => openDrawer(i);
+    });
+    layer.addLayer(m);
+  }
+}
+
+uhEl.addEventListener("change", render);
+districtEl.addEventListener("change", render);
+nershilSearch.addEventListener("input", render);
+typeEl.addEventListener("change", render);
+payEl.addEventListener("change", render);
+
+/* ========= SLIDERS INIT ========= */
+function initNoUiSliders(pricesMin, pricesMax, m2MinV, m2MaxV){
+  if (priceSliderEl.noUiSlider) priceSliderEl.noUiSlider.destroy();
+  if (m2SliderEl.noUiSlider) m2SliderEl.noUiSlider.destroy();
+
+  noUiSlider.create(priceSliderEl, {
+    start: [pricesMin, pricesMax],
+    connect: true,
+    range: { min: 0, max: PRICE_CAP },
+    step: PRICE_STEP,
+    format: { to: v => Math.round(v), from: v => Number(v) }
+  });
+
+  noUiSlider.create(m2SliderEl, {
+    start: [m2MinV, m2MaxV],
+    connect: true,
+    range: { min: 0, max: AREA_CAP },
+    step: AREA_STEP,
+    format: { to: v => Math.round(v), from: v => Number(v) }
+  });
+
+  function updatePrice(){
+    const v = priceSliderEl.noUiSlider.get().map(Number);
+    priceRange.min = v[0]; priceRange.max = v[1];
+    priceLabel.textContent =
+      (priceRange.max >= PRICE_CAP)
+      ? `${fmtMoneyShort(priceRange.min)} – 2000+ ₮`
+      : `${fmtMoneyShort(priceRange.min)} – ${fmtMoneyShort(priceRange.max)}`;
+  }
+  function updateM2(){
+    const v = m2SliderEl.noUiSlider.get().map(Number);
+    m2Range.min = v[0]; m2Range.max = v[1];
+    m2Label.textContent =
+      (m2Range.max >= AREA_CAP)
+      ? `${m2Range.min} – 300+ m²`
+      : `${m2Range.min} – ${m2Range.max} m²`;
+  }
+
+  priceSliderEl.noUiSlider.on("update", updatePrice);
+  m2SliderEl.noUiSlider.on("update", updateM2);
+  priceSliderEl.noUiSlider.on("set", () => { updatePrice(); render(); });
+  m2SliderEl.noUiSlider.on("set", () => { updateM2(); render(); });
+  updatePrice(); updateM2();
+}
+
+/* ========= LOAD ========= */
+fetch(API_URL)
+  .then(r => r.json())
+  .then(data => {
+    const arr = Array.isArray(data) ? data : [];
+    ALL = arr.map(x => {
+      const lat = toNumber(x.lat ?? x.Lat ?? x.latitude ?? x.LAT);
+      const lng = toNumber(x.lng ?? x.long ?? x.Long ?? x.longitude ?? x.LNG ?? x.LON);
+      return { ...x, lat, lng };
+    }).filter(x => Number.isFinite(x.lat) && Number.isFinite(x.lng));
+
+    const districtSet = new Set(ALL.map(x => (x.bairshil || "").trim()).filter(Boolean));
+    districtEl.innerHTML =
+      `<option value="">Дүүрэг (Бүгд)</option>` +
+      [...districtSet].sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+
+    const paySet = new Set(ALL.map(x => (x.tolborNohtsol || "").trim()).filter(Boolean));
+    paySet.add("Бэлэн мөнгө");
+    payEl.innerHTML =
+      `<option value="">Төлбөрийн нөхцөл (Бүгд)</option>` +
+      [...paySet].sort().map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join("");
+
+
+    uhEl.innerHTML = `
+      <option value="">ҮХ Төрөл (Бүгд)</option>
+      <option value="Байр">Байр</option>
+      <option value="Оффис">Оффис</option>
+      <option value="Хаус">Хаус</option>
+      <option value="Үйлчилгээ">Үйлчилгээ</option>
+      <option value="cat_gazar">Газар</option>
+      <option value="cat_gazar_object">Газар + Обьект</option>
+      <option value="cat_zuslan">Зуслан</option>
+      <option value="cat_object">Обьект</option>
+    `;
+
+    initNoUiSliders(0, PRICE_CAP, 0, AREA_CAP);
+    clusterToggle.checked = false;
+    setLayerMode(false);
+    render();
+  })
+  .catch(err => {
+    console.error(err);
+    alert("API load failed. Check API_URL and Apps Script permissions (Anyone).");
+  });
+
+</script>
 </body>
 </html>
